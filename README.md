@@ -1,2 +1,2 @@
 # go-aoc
-AoC helpers in Go.
+Advent of Code helpers in Go.
