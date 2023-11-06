@@ -11,6 +11,7 @@ import (
 )
 
 type baseRequest struct {
+	baseAddr string
 	// Year is the year of the puzzle to submit an answer for.
 	year int
 	// Day is the day of the puzzle to submit an answer for.
@@ -23,9 +24,14 @@ type baseRequest struct {
 // NewRequest returns a new Advent of Code request. By default, the request will read the session key from the
 // environment variable `AOC_SESSION`.
 func NewRequest(year, day int) *baseRequest {
+	return newRequest(`https://adventofcode.com`, year, day)
+}
+
+func newRequest(baseAddr string, year, day int) *baseRequest {
 	return &baseRequest{
-		year: year,
-		day:  day,
+		baseAddr: baseAddr,
+		year:     year,
+		day:      day,
 		sessionKeyProvider: namedEnvSessionKeyProvider{
 			envName: `AOC_SESSION`,
 		},
@@ -47,7 +53,7 @@ func (br *baseRequest) WithSessionKey(sessionKey string) *baseRequest {
 }
 
 func (br *baseRequest) baseURL() string {
-	return fmt.Sprintf(`https://adventofcode.com/%d/day/%d`, br.year, br.day)
+	return fmt.Sprintf(`%s/%d/day/%d`, br.baseAddr, br.year, br.day)
 }
 
 func (br *baseRequest) addCookie(req *http.Request) error {
@@ -114,7 +120,7 @@ type getInputRequest struct {
 func (r *getInputRequest) toHTTPRequest(ctx context.Context) (*http.Request, error) {
 	u := r.baseRequest.baseURL() + `/input`
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
 		return nil, err
 	}
