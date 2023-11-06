@@ -18,10 +18,11 @@ func TestGetInput_Integration(t *testing.T) {
 		t.Skip(`AOC_SESSION variable is not set`)
 	}
 
-	r, err := GetInput(context.Background(), http.DefaultClient, GetInputRequest{
-		Year: 2015,
-		Day:  1,
-	})
+	r, err := GetInput(
+		context.Background(),
+		http.DefaultClient,
+		NewRequest(2015, 1).BuildGetInputRequest(),
+	)
 	require.NoError(t, err)
 	defer r.Close()
 
@@ -29,11 +30,11 @@ func TestGetInput_Integration(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEmpty(t, bs1)
 
-	bs2, err := GetInputBytes(context.Background(), http.DefaultClient, GetInputRequest{
-		Year:       2015,
-		Day:        1,
-		SessionKey: sess,
-	})
+	bs2, err := GetInputBytes(
+		context.Background(),
+		http.DefaultClient,
+		NewRequest(2015, 1).WithSessionKey(sess).BuildGetInputRequest(),
+	)
 	require.NoError(t, err)
 
 	assert.True(t, bytes.Equal(bs1, bs2), `expected bytes to be equal`)

@@ -15,11 +15,10 @@ func TestSubmitAnswer_Integration(t *testing.T) {
 		t.Skip(`AOC_SESSION variable is not set`)
 	}
 
-	err := SubmitAnswer(context.Background(), http.DefaultClient, SubmitAnswerRequest{
-		Year:   2015,
-		Day:    7,
-		Answer: `123`,
-		Level:  AnswerPartOne,
-	})
+	err := SubmitAnswer(
+		context.Background(),
+		http.DefaultClient,
+		NewRequest(2015, 7).BuildSubmitAnswerRequest(AnswerPartOne, `123`),
+	)
 	assert.ErrorIs(t, err, errWrongAnswer)
 }
