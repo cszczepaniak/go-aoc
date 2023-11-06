@@ -16,7 +16,7 @@ const (
 	AnswerPartTwo AnswerLevel = 2
 )
 
-var errWrongAnswer = errors.New(`incorrect answer`)
+var ErrWrongAnswer = errors.New(`incorrect answer`)
 
 func SubmitAnswer(ctx context.Context, cl *http.Client, answerReq *submitAnswerRequest) error {
 	req, err := answerReq.toHTTPRequest(ctx)
@@ -37,7 +37,7 @@ func SubmitAnswer(ctx context.Context, cl *http.Client, answerReq *submitAnswerR
 	sc := bufio.NewScanner(resp.Body)
 	for sc.Scan() {
 		if strings.Contains(sc.Text(), `That's not the right answer;`) {
-			return errWrongAnswer
+			return ErrWrongAnswer
 		}
 	}
 

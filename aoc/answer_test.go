@@ -20,5 +20,5 @@ func TestSubmitAnswer_Integration(t *testing.T) {
 		http.DefaultClient,
 		NewRequest(2015, 7).BuildSubmitAnswerRequest(AnswerPartOne, `123`),
 	)
-	assert.ErrorIs(t, err, errWrongAnswer)
+	assert.ErrorIs(t, err, ErrWrongAnswer)
 }
