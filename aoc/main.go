@@ -103,7 +103,7 @@ func Main[T any](
 			continue
 		}
 
-		if cfg.cl != nil {
+		if cfg.cl == nil {
 			fmt.Println("The submit flag was provided, but no HTTP client was configured.")
 			continue
 		}
