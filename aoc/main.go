@@ -108,6 +108,8 @@ func Main[T any](
 			continue
 		}
 
+		fmt.Printf("Submitting answer for part %v... ", s.level)
+
 		err = SubmitAnswer(
 			context.Background(),
 			cfg.cl,
@@ -120,8 +122,13 @@ func Main[T any](
 			),
 		)
 		if err != nil {
+			if errors.Is(err, ErrWrongAnswer) {
+				fmt.Println(`Sorry, wrong answer!`)
+				continue
+			}
 			return err
 		}
+		fmt.Println(`Correct answer!`)
 	}
 
 	return nil
