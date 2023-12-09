@@ -81,11 +81,22 @@ func (ig *inputGetter) getCachedInput(req *getInputRequest) ([]byte, error) {
 }
 
 func (ig *inputGetter) putCachedInput(req *getInputRequest, data []byte) error {
+	p, err := ig.getOrCreateCachePath(req)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(p, data, 0o755)
+}
+
+func (ig *inputGetter) getOrCreateCachePath(req *getInputRequest) (string, error) {
 	p := path.Join(
 		ig.cachePath,
 		strconv.Itoa(req.year),
 		strconv.Itoa(req.day),
-		`input.txt`,
 	)
-	return os.WriteFile(p, data, 0o755)
+	err := os.MkdirAll(p, os.ModePerm)
+	if err != nil {
+		return ``, err
+	}
+	return path.Join(p, `input.txt`), nil
 }
