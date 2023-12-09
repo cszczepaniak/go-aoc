@@ -35,9 +35,14 @@ func (ig *inputGetter) GetInputBytes(ctx context.Context, inputReq *getInputRequ
 	if ig.cachePath != `` {
 		bs, err := ig.getCachedInput(inputReq)
 		if err != nil {
-			return nil, fmt.Errorf(`failed to get cached input: %w`, err)
+			if !os.IsNotExist(err) {
+				return nil, err
+			}
+			// If the file simply doesn't exist, fall back to making the HTTP request.
+		} else {
+			// We had no error; return the cached input.
+			return bs, nil
 		}
-		return bs, nil
 	}
 
 	req, err := inputReq.toHTTPRequest(ctx)
