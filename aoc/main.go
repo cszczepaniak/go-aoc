@@ -7,14 +7,29 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path"
 )
 
 type mainConfig struct {
-	cl        *http.Client
+	cl *http.Client
+	// The path used to save downloaded inputs so they don't need to be re-fetched.
+	cacheInputBasePath string
+
 	inputPath string
 }
 
 type mainConfigOpt func(cfg mainConfig) mainConfig
+
+func WithCachePath(path string) mainConfigOpt {
+	return func(cfg mainConfig) mainConfig {
+		cfg.cacheInputBasePath = path
+		return cfg
+	}
+}
+
+func DisableInputCache() mainConfigOpt {
+	return WithCachePath(``)
+}
 
 func WithHTTPClient(cl *http.Client) mainConfigOpt {
 	return func(cfg mainConfig) mainConfig {
@@ -54,13 +69,19 @@ func Main[T any](
 	flag.BoolVar(&submit, `submit`, false, `Whether or not to submit the answers from any provided solutions.`)
 	flag.Parse()
 
-	cfg := mainConfig{}
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+
+	cfg := mainConfig{
+		cacheInputBasePath: path.Join(homeDir, `.aoc`, `input`),
+	}
 	for _, opt := range opts {
 		cfg = opt(cfg)
 	}
 
 	var input string
-	var err error
 
 	switch {
 	case cfg.inputPath != ``:
@@ -70,9 +91,9 @@ func Main[T any](
 		}
 		input = string(bs)
 	case cfg.cl != nil:
-		input, err = GetInputString(
+		ig := newInputGetter(cfg.cacheInputBasePath, cfg.cl)
+		input, err = ig.GetInputString(
 			context.Background(),
-			cfg.cl,
 			NewRequest(year, day).BuildGetInputRequest(),
 		)
 	default:
