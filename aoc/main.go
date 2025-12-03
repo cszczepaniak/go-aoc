@@ -88,7 +88,6 @@ func Main[T any](
 	if err != nil {
 		return err
 	}
-	fmt.Println(cachePath)
 
 	cfg := mainConfig{
 		cl: http.DefaultClient,
