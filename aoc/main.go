@@ -7,7 +7,29 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
+	"strconv"
 )
+
+func cachedInputPath() (string, error) {
+	home, err := os.UserCacheDir()
+	if err != nil {
+		return "", err
+	}
+	path := filepath.Join(home, "aoc")
+
+	_, err = os.Stat(path)
+	if os.IsNotExist(err) {
+		err := os.Mkdir(path, os.ModePerm)
+		if err != nil {
+			return "", err
+		}
+	} else if err != nil {
+		return "", err
+	}
+
+	return path, nil
+}
 
 type mainConfig struct {
 	cl        *http.Client
@@ -27,6 +49,9 @@ func WithDefaultHTTPClient() mainConfigOpt {
 	return WithHTTPClient(http.DefaultClient)
 }
 
+// Deprecated: WithInputFile shouldn't be used anymore. Main now caches inputs for you.
+//
+// TODO: let users turn off the caching maybe
 func WithInputFile(path string) mainConfigOpt {
 	return func(cfg mainConfig) mainConfig {
 		cfg.inputPath = path
@@ -36,13 +61,16 @@ func WithInputFile(path string) mainConfigOpt {
 
 type Solution[T any] func(input string) T
 
-// Main runs the given solutions for the given puzzle year and day. Main looks for the `-submit` flag provided to the
-// program to determine whether the answer should be submitted, or just printed to stdout. If submitted, the returned
-// answer from each solution is formatted to a string using the `%v` verb.
+// Main runs the given solutions for the given puzzle year and day. Main looks for the `-submit`
+// flag provided to the program to determine whether the answer should be submitted, or just printed
+// to stdout. The returned answer from each solution is formatted to a string using the `%v` verb.
 //
-// By default, the input will be downloaded from the Advent of Code website using the environment variable `AOC_SESSION`
-// to authenticate. If an input file path is provided, that will be used instead. `AOC_SESSION` is also used for answer
-// submission, if the `-submit` flag is set.
+// By default, the input will be downloaded from the Advent of Code website using the environment
+// variable `AOC_SESSION` to authenticate. After the first download, the input will be saved for
+// future runs.
+//
+// The given opts can be used to configure the HTTP client to use when downloading inputs and
+// submitting answers. Other options are ignored.
 //
 // A nil solution may be provided. Nil solutions will be skipped.
 func Main[T any](
@@ -51,35 +79,58 @@ func Main[T any](
 	opts ...mainConfigOpt,
 ) error {
 	submit := false
+	clean := false
 	flag.BoolVar(&submit, `submit`, false, `Whether or not to submit the answers from any provided solutions.`)
+	flag.BoolVar(&clean, `clean`, false, `Whether or not to delete any cached input file for this year/day.`)
 	flag.Parse()
 
-	cfg := mainConfig{}
+	cachePath, err := cachedInputPath()
+	if err != nil {
+		return err
+	}
+	fmt.Println(cachePath)
+
+	cfg := mainConfig{
+		cl: http.DefaultClient,
+	}
 	for _, opt := range opts {
 		cfg = opt(cfg)
 	}
 
-	var input string
-	var err error
-
-	switch {
-	case cfg.inputPath != ``:
-		bs, err := os.ReadFile(cfg.inputPath)
+	var input []byte
+	dirPath := filepath.Join(cachePath, strconv.Itoa(year), strconv.Itoa(day))
+	fullPath := filepath.Join(dirPath, "input.txt")
+	found := false
+	if clean {
+		err := os.RemoveAll(fullPath)
 		if err != nil {
 			return err
 		}
-		input = string(bs)
-	case cfg.cl != nil:
-		input, err = GetInputString(
+	} else {
+		input, err = os.ReadFile(fullPath)
+		found = !os.IsNotExist(err)
+		if err != nil && found {
+			return err
+		}
+	}
+
+	if !found {
+		input, err = GetInputBytes(
 			context.Background(),
 			cfg.cl,
 			NewRequest(year, day).BuildGetInputRequest(),
 		)
-	default:
-		return errors.New(`no valid input source was provided`)
-	}
-	if err != nil {
-		return err
+		if err != nil {
+			return err
+		}
+
+		if err := os.MkdirAll(dirPath, os.ModePerm); err != nil {
+			return err
+		}
+
+		if err := os.WriteFile(fullPath, input, os.ModePerm); err != nil {
+			return err
+		}
 	}
 
 	for _, s := range []struct {
@@ -97,7 +148,7 @@ func Main[T any](
 			continue
 		}
 
-		res := s.solution(input)
+		res := s.solution(string(input))
 		fmt.Printf("Solution for part %v: %v\n", s.level, res)
 		if !submit {
 			continue
