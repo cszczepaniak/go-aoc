@@ -7,29 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"path/filepath"
-	"strconv"
 )
-
-func cachedInputPath() (string, error) {
-	home, err := os.UserCacheDir()
-	if err != nil {
-		return "", err
-	}
-	path := filepath.Join(home, "aoc")
-
-	_, err = os.Stat(path)
-	if os.IsNotExist(err) {
-		err := os.Mkdir(path, os.ModePerm)
-		if err != nil {
-			return "", err
-		}
-	} else if err != nil {
-		return "", err
-	}
-
-	return path, nil
-}
 
 type mainConfig struct {
 	cl        *http.Client
@@ -84,7 +62,7 @@ func Main[T any](
 	flag.BoolVar(&clean, `clean`, false, `Whether or not to delete any cached input file for this year/day.`)
 	flag.Parse()
 
-	cachePath, err := cachedInputPath()
+	cachePath, err := cachedInputPath(year, day)
 	if err != nil {
 		return err
 	}
@@ -96,40 +74,16 @@ func Main[T any](
 		cfg = opt(cfg)
 	}
 
-	var input []byte
-	dirPath := filepath.Join(cachePath, strconv.Itoa(year), strconv.Itoa(day))
-	fullPath := filepath.Join(dirPath, "input.txt")
-	found := false
 	if clean {
-		err := os.RemoveAll(fullPath)
+		err := os.RemoveAll(cachePath)
 		if err != nil {
-			return err
-		}
-	} else {
-		input, err = os.ReadFile(fullPath)
-		found = !os.IsNotExist(err)
-		if err != nil && found {
 			return err
 		}
 	}
 
-	if !found {
-		input, err = GetInputBytes(
-			context.Background(),
-			cfg.cl,
-			NewRequest(year, day).BuildGetInputRequest(),
-		)
-		if err != nil {
-			return err
-		}
-
-		if err := os.MkdirAll(dirPath, os.ModePerm); err != nil {
-			return err
-		}
-
-		if err := os.WriteFile(fullPath, input, os.ModePerm); err != nil {
-			return err
-		}
+	input, err := GetAndCacheInput(context.Background(), cfg.cl, NewRequest(day, year).BuildGetInputRequest())
+	if err != nil {
+		return err
 	}
 
 	for _, s := range []struct {
