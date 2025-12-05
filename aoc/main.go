@@ -37,7 +37,7 @@ func WithInputFile(path string) mainConfigOpt {
 	}
 }
 
-type Solution[T any] func(input string) T
+type Solution[T any, In interface{ ~string | ~[]byte }] func(input In) T
 
 // Main runs the given solutions for the given puzzle year and day. Main looks for the `-submit`
 // flag provided to the program to determine whether the answer should be submitted, or just printed
@@ -51,9 +51,9 @@ type Solution[T any] func(input string) T
 // submitting answers. Other options are ignored.
 //
 // A nil solution may be provided. Nil solutions will be skipped.
-func Main[T any](
+func Main[T any, In interface{ ~string | ~[]byte }](
 	year, day int,
-	part1, part2 Solution[T],
+	part1, part2 Solution[T, In],
 	opts ...mainConfigOpt,
 ) error {
 	submit := false
@@ -81,14 +81,14 @@ func Main[T any](
 		}
 	}
 
-	input, err := GetAndCacheInput(context.Background(), cfg.cl, NewRequest(day, year).BuildGetInputRequest())
+	input, err := GetAndCacheInput(context.Background(), cfg.cl, NewRequest(year, day).BuildGetInputRequest())
 	if err != nil {
 		return err
 	}
 
 	for _, s := range []struct {
 		level    AnswerLevel
-		solution Solution[T]
+		solution Solution[T, In]
 	}{{
 		level:    AnswerPartOne,
 		solution: part1,
@@ -101,7 +101,7 @@ func Main[T any](
 			continue
 		}
 
-		res := s.solution(string(input))
+		res := s.solution(In(input))
 		fmt.Printf("Solution for part %v: %v\n", s.level, res)
 		if !submit {
 			continue
