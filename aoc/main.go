@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"slices"
 )
 
 type mainConfig struct {
@@ -101,7 +102,7 @@ func Main[T any, In interface{ ~string | ~[]byte }](
 			continue
 		}
 
-		res := s.solution(In(input))
+		res := s.solution(In(slices.Clone(input)))
 		fmt.Printf("Solution for part %v: %v\n", s.level, res)
 		if !submit {
 			continue
